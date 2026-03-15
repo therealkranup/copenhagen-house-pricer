@@ -264,8 +264,24 @@
         }
 
         /* ── Loading ──────────────────────────────── */
-        .loading { display: none; text-align: center; padding: 60px 40px; }
-        .loading.show { display: block; }
+        .loading {
+            display: none;
+            text-align: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            padding: 60px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .loading.show { display: flex; }
         .spinner {
             width: 48px; height: 48px;
             border: 3px solid rgba(74, 95, 143, 0.2);
