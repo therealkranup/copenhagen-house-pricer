@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copenhagen House Price Evaluator</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --bg-grad: linear-gradient(135deg, #ffffff 0%, #f8f9fa 50%, #f5f7fa 100%);
+            --surface: #ffffff;
+            --surface-light: #f8f9fa;
+            --surface2: #f0f2f5;
+            --border: #e0e6ed;
+            --text: #1a1a2e;
+            --text-dim: #5a5f73;
+            --accent: #1a1a2e;
+            --accent-secondary: #4a5f8f;
+            --accent-glow: rgba(26, 26, 46, 0.1);
+            --green: #10b981;
+            --green-bg: rgba(16, 185, 129, 0.15);
+            --red: #ef4444;
+            --red-bg: rgba(239, 68, 68, 0.15);
+            --yellow: #f59e0b;
+            --yellow-bg: rgba(245, 158, 11, 0.15);
+            --radius: 16px;
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 30px 80px rgba(0, 0, 0, 0.5);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background: var(--bg-grad);
+            color: var(--text);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(74, 95, 143, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(74, 95, 143, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(16, 185, 129, 0.02) 0%, transparent 40%),
+                radial-gradient(circle at 90% 20%, rgba(245, 158, 11, 0.02) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: -1;
+            animation: gradientShift 15s ease-in-out infinite;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            width: 0;
+            height: 0;
+            opacity: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+        @keyframes gradientShift {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.1); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) translateX(0px); }
+            50% { transform: translateY(-20px) translateX(-10px); }
+        }
+        .container { max-width: 920px; margin: 0 auto; padding: 40px 20px; }
+        header {
+            text-align: center;
+            padding: 60px 0 48px;
+            position: relative;
+        }
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, #1a1a2e, transparent);
+            border-radius: 2px;
+        }
+        header h1 {
+            font-size: 48px;
+            font-weight: 900;
+            letter-spacing: -1.5px;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #4a5f8f 50%, #1a1a2e 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% 200%;
+            animation: gradientFlow 8s ease infinite;
+        }
+        @keyframes gradientFlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        header h1 span {
+            color: #4a5f8f;
+            text-shadow: 0 0 20px rgba(74, 95, 143, 0.3);
+            animation: glow 2s ease-in-out infinite;
+        }
+        @keyframes glow {
+            0%, 100% { text-shadow: 0 0 20px rgba(74, 95, 143, 0.3); }
+            50% { text-shadow: 0 0 40px rgba(74, 95, 143, 0.5), 0 0 60px rgba(26, 26, 46, 0.2); }
+        }
+        header p {
+            color: var(--text-dim);
+            font-size: 17px;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            animation: fadeInUp 1s ease-out 0.2s both;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── Form ─────────────────────────────────── */
+        .form-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 40px;
+            margin-bottom: 32px;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .form-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(74, 95, 143, 0.08) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+        .form-card:hover::before {
+            opacity: 1;
+        }
+        .form-card:hover {
+            border-color: #4a5f8f;
+            box-shadow:
+                0 30px 80px rgba(74, 95, 143, 0.12),
+                inset 0 1px 0 rgba(74, 95, 143, 0.1);
+            transform: translateY(-2px);
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group.full { grid-column: 1 / -1; }
+        label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5f8f;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        input, select {
+            background: rgba(240, 242, 245, 0.8);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(4px);
+        }
+        input:hover, select:hover {
+            border-color: #4a5f8f;
+            background: rgba(240, 242, 245, 0.95);
+            box-shadow: 0 0 15px rgba(74, 95, 143, 0.1);
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4a5f8f;
+            background: #ffffff;
+            box-shadow:
+                0 0 0 4px rgba(74, 95, 143, 0.15),
+                0 0 20px rgba(74, 95, 143, 0.1);
+            transform: translateY(-1px);
+        }
+        input::placeholder { color: var(--text-dim); opacity: 0.6; }
+        .btn {
+            background: linear-gradient(135deg, #4a5f8f 0%, #3d4f78 100%);
+            color: #ffffff;
+            border: 2px solid #4a5f8f;
+            border-radius: 12px;
+            padding: 16px 48px;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            margin-top: 12px;
+            box-shadow:
+                0 10px 30px rgba(74, 95, 143, 0.25),
+                0 0 20px rgba(74, 95, 143, 0.15) inset;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+        .btn:hover::before {
+            left: 100%;
+        }
+        .btn:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow:
+                0 20px 50px rgba(74, 95, 143, 0.35),
+                0 0 30px rgba(255, 255, 255, 0.2) inset;
+            border-color: #2d3f63;
+        }
+        .btn:active {
+            transform: translateY(-1px) scale(0.98);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-row {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+
+        /* ── Loading ──────────────────────────────── */
+        .loading { display: none; text-align: center; padding: 60px 40px; }
+        .loading.show { display: block; }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 3px solid rgba(74, 95, 143, 0.2);
+            border-top-color: #4a5f8f;
+            border-radius: 50%;
+            animation: spin 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading p { color: var(--text-dim); font-size: 15px; font-weight: 500; }
+
+        /* ── Results ──────────────────────────────── */
+        #results { display: none; }
+        #results.show { display: block; }
+
+        .verdict-card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(12px);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 48px 40px;
+            text-align: center;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .verdict-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 5px;
+            opacity: 0.9;
+            animation: shimmer 2s infinite;
+        }
+        .verdict-card.overpriced::before {
+            background: linear-gradient(90deg, var(--red), transparent);
+            box-shadow: 0 0 15px var(--red);
+        }
+        .verdict-card.underpriced::before {
+            background: linear-gradient(90deg, var(--green), transparent);
+            box-shadow: 0 0 15px var(--green);
+        }
+        .verdict-card.fairly_priced::before {
+            background: linear-gradient(90deg, var(--yellow), transparent);
+            box-shadow: 0 0 15px var(--yellow);
+        }
+        @keyframes shimmer {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .verdict-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            display: inline-block;
+            animation: bounce 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+        .verdict-label {
+            font-size: 36px;
+            font-weight: 900;
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+            text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+        }
+        .verdict-card.overpriced .verdict-label {
+            color: var(--red);
+            text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }
+        .verdict-card.underpriced .verdict-label {
+            color: var(--green);
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
+        .verdict-card.fairly_priced .verdict-label {
+            color: var(--yellow);
+            text-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+        }
+
+        .verdict-detail { color: var(--text-dim); font-size: 15px; line-height: 1.7; margin-bottom: 20px; }
+        .verdict-detail strong { color: var(--accent); font-weight: 700; }
+
+        .confidence-bar {
+            margin-top: 24px;
+            background: rgba(160, 168, 200, 0.1);
+            border-radius: 8px;
+            height: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .confidence-fill {
+            height: 100%;
+            border-radius: 8px;
+            background: linear-gradient(90deg, #4a5f8f, #3d4f78);
+            transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 20px rgba(74, 95, 143, 0.3);
+        }
+        .confidence-label {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 12px;
+            font-weight: 500;
+        }
+
+        /* ── Analysis Cards ───────────────────────── */
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        @media (max-width: 700px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .analysis-grid { grid-template-columns: 1fr; }
+        }
+        .analysis-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+            position: relative;
+            overflow: hidden;
+        }
+        .analysis-card::before {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(74, 95, 143, 0.08) 0%, transparent 100%);
+            transition: top 0.4s;
+        }
+        .analysis-card:hover::before {
+            top: 0;
+        }
+        .analysis-card:hover {
+            border-color: #4a5f8f;
+            box-shadow:
+                0 15px 40px rgba(74, 95, 143, 0.12),
+                inset 0 0 30px rgba(74, 95, 143, 0.05);
+            transform: translateY(-4px);
+        }
+        .analysis-card h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4a5f8f;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(160, 168, 200, 0.1);
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: var(--text-dim); font-weight: 500; }
+        .stat-value { font-weight: 700; }
+        .positive { color: var(--green); }
+        .negative { color: var(--red); }
+        .neutral { color: var(--yellow); }
+
+        /* ── Adjustments ──────────────────────────── */
+        .adjustments-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        .adjustments-card h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4a5f8f;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        .adj-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(240, 242, 245, 0.8);
+            border: 1px solid rgba(74, 95, 143, 0.1);
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .adj-item:hover {
+            border-color: #4a5f8f;
+            background: rgba(240, 242, 245, 0.95);
+        }
+        .adj-item:last-child { margin-bottom: 0; }
+        .adj-name { color: var(--text-dim); font-weight: 500; }
+        .adj-value { font-weight: 600; margin: 0 auto 0 16px; color: var(--text); }
+        .adj-pct { font-weight: 700; min-width: 60px; text-align: right; }
+
+        /* ── Comparable Sales ──────────────────────── */
+        .comps-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        }
+        .comps-card h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4a5f8f;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        .comp-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 12px;
+            padding: 12px 0;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(74, 95, 143, 0.1);
+        }
+        .comp-row:last-child { border-bottom: none; }
+        .comp-header { font-weight: 700; color: #4a5f8f; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* ── Sources ──────────────────────────────── */
+        .sources {
+            text-align: center;
+            padding: 32px 20px;
+            color: var(--text-dim);
+            font-size: 13px;
+            background: rgba(240, 242, 245, 0.6);
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            margin-top: 32px;
+        }
+        .sources a {
+            color: #4a5f8f;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .sources a:hover {
+            text-decoration: underline;
+            opacity: 0.8;
+        }
+
+        .scrape-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            padding: 8px 14px;
+            border-radius: 20px;
+            margin: 6px;
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(160, 168, 200, 0.2);
+            transition: all 0.2s;
+        }
+        .scrape-ok {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--green);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+        .scrape-fail {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--red);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+        .scrape-ok .dot { background: var(--green); }
+        .scrape-fail .dot { background: var(--red); }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* ── Copenhagen Building Imagery ───────────── */
+        .building-imagery {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            height: 450px;
+            pointer-events: none;
+            z-index: -2;
+            background: linear-gradient(180deg, transparent 0%, rgba(74, 95, 143, 0.05) 100%);
+            display: flex;
+            align-items: flex-end;
+            overflow: hidden;
+        }
+
+        .nyhavn-buildings {
+            position: absolute;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            background-image: url('https://images.pexels.com/photos/8312086/pexels-photo-8312086.jpeg');
+            background-size: cover;
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            opacity: 1;
+        }
+
+        .carlsberg-buildings {
+            position: absolute;
+            right: 0;
+            width: 50%;
+            height: 100%;
+            background-image: url('https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=1600');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            opacity: 0.92;
+        }
+
+        .nyhavn-building,
+        .carlsberg-building,
+        .building-accent {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Copenhagen <span>House Price</span> Evaluator</h1>
+            <p>Enter property details to check if the asking price is fair</p>
+        </header>
+
+        <!-- ── Input Form ──────────────────────────── -->
+        <div class="form-card">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Address (optional — used for Dingeo lookup)</label>
+                    <input type="text" id="address" placeholder="e.g. Strandboulevarden 55, 2100 København Ø">
+                </div>
+                <div class="form-group">
+                    <label>Asking Price (DKK)</label>
+                    <input type="number" id="asking_price" placeholder="e.g. 3500000" required>
+                </div>
+                <div class="form-group">
+                    <label>Size (m²)</label>
+                    <input type="number" id="size_m2" placeholder="e.g. 85" required>
+                </div>
+                <div class="form-group">
+                    <label>Zip Code</label>
+                    <input type="text" id="zip_code" placeholder="e.g. 2100" required>
+                </div>
+                <div class="form-group">
+                    <label>Property Type</label>
+                    <select id="property_type">
+                        <option value="apartment">Apartment (Lejlighed)</option>
+                        <option value="house">House (Villa/Rækkehus)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Energy Label (optional)</label>
+                    <select id="energy_label">
+                        <option value="">— Unknown —</option>
+                        <option value="A2020">A2020</option>
+                        <option value="A2015">A2015</option>
+                        <option value="A2010">A2010</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                        <option value="E">E</option>
+                        <option value="F">F</option>
+                        <option value="G">G</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Building Year (optional)</label>
+                    <input type="number" id="building_year" placeholder="e.g. 1920">
+                </div>
+                <div class="form-group">
+                    <label>Rooms (optional)</label>
+                    <input type="number" id="rooms" placeholder="e.g. 3">
+                </div>
+                <div class="form-group">
+                    <label>Noise Level (optional)</label>
+                    <select id="noise_level">
+                        <option value="">— Unknown —</option>
+                        <option value="low">Low (&lt; 55 dB)</option>
+                        <option value="moderate">Moderate (55-65 dB)</option>
+                        <option value="high">High (65-75 dB)</option>
+                        <option value="very_high">Very High (&gt; 75 dB)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button class="btn" id="evaluateBtn" onclick="checkPrice()">Evaluate Price</button>
+            </div>
+        </div>
+
+        <!-- ── Loading ─────────────────────────────── -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Scraping Dingeo &amp; Boliga for data…</p>
+        </div>
+
+        <!-- ── Results ─────────────────────────────── -->
+        <div id="results">
+            <div class="verdict-card" id="verdictCard">
+                <div class="verdict-icon" id="verdictIcon"></div>
+                <div class="verdict-label" id="verdictLabel"></div>
+                <div class="verdict-detail" id="verdictDetail"></div>
+                <div class="confidence-bar"><div class="confidence-fill" id="confidenceFill"></div></div>
+                <div class="confidence-label" id="confidenceLabel"></div>
+            </div>
+
+            <div class="analysis-grid">
+                <!-- Simple -->
+                <div class="analysis-card">
+                    <h3>Simple Check</h3>
+                    <div id="simpleStats"></div>
+                </div>
+                <!-- Price/m² -->
+                <div class="analysis-card">
+                    <h3>Price per m²</h3>
+                    <div id="m2Stats"></div>
+                </div>
+                <!-- Multi-factor -->
+                <div class="analysis-card">
+                    <h3>Multi-Factor</h3>
+                    <div id="multiStats"></div>
+                </div>
+            </div>
+
+            <div class="adjustments-card" id="adjustmentsCard" style="display:none;">
+                <h3>Price Adjustments Applied</h3>
+                <div id="adjustmentsList"></div>
+            </div>
+
+            <div class="comps-card" id="compsCard" style="display:none;">
+                <h3>Comparable Sales</h3>
+                <div id="compsList"></div>
+            </div>
+
+            <div class="sources" id="scrapeStatus"></div>
+        </div>
+    </div>
+
+    <!-- Copenhagen Building Imagery -->
+    <div class="building-imagery">
+        <div class="building-accent"></div>
+        <div class="nyhavn-buildings">
+            <div class="nyhavn-building"></div>
+            <div class="nyhavn-building"></div>
+            <div class="nyhavn-building"></div>
+            <div class="nyhavn-building"></div>
+            <div class="nyhavn-building"></div>
+        </div>
+        <div class="carlsberg-buildings">
+            <div class="carlsberg-building"></div>
+            <div class="carlsberg-building"></div>
+            <div class="carlsberg-building"></div>
+            <div class="carlsberg-building"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+
+        function formatDKK(n) {
+            return new Intl.NumberFormat('da-DK').format(n) + ' kr';
+        }
+
+        function diffClass(pct) {
+            if (pct > 10) return 'negative';
+            if (pct < -10) return 'positive';
+            return 'neutral';
+        }
+
+        function diffLabel(pct) {
+            const abs = Math.abs(pct);
+            if (pct > 0) return `+${abs}% over`;
+            if (pct < 0) return `${abs}% under`;
+            return 'On par';
+        }
+
+        function statRow(label, value, cls) {
+            return `<div class="stat-row"><span class="stat-label">${label}</span><span class="stat-value ${cls || ''}">${value}</span></div>`;
+        }
+
+        async function checkPrice() {
+            const btn = document.getElementById('evaluateBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+
+            const zip = document.getElementById('zip_code').value.trim();
+            const price = document.getElementById('asking_price').value;
+            const size = document.getElementById('size_m2').value;
+
+            if (!zip || !price || !size) {
+                alert('Please fill in asking price, size, and zip code.');
+                return;
+            }
+
+            btn.disabled = true;
+            loading.classList.add('show');
+            results.classList.remove('show');
+
+            const payload = {
+                address: document.getElementById('address').value.trim(),
+                asking_price: parseInt(price),
+                size_m2: parseInt(size),
+                zip_code: zip,
+                property_type: document.getElementById('property_type').value,
+                energy_label: document.getElementById('energy_label').value || null,
+                building_year: document.getElementById('building_year').value || null,
+                noise_level: document.getElementById('noise_level').value || null,
+                rooms: document.getElementById('rooms').value || null,
+            };
+
+            try {
+                const resp = await fetch(`${API_URL}/api/evaluate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                renderResults(data);
+            } catch (e) {
+                alert('Failed to connect to backend. Make sure the Flask server is running on port 5000.');
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        function renderResults(data) {
+            const results = document.getElementById('results');
+            const o = data.overall;
+
+            // Verdict card
+            const vc = document.getElementById('verdictCard');
+            vc.className = 'verdict-card ' + o.verdict;
+
+            const icons = { overpriced: '📈', underpriced: '📉', fairly_priced: '✅' };
+            const labels = { overpriced: 'Overpriced', underpriced: 'Underpriced', fairly_priced: 'Fairly Priced' };
+            document.getElementById('verdictIcon').textContent = icons[o.verdict];
+            document.getElementById('verdictLabel').textContent = labels[o.verdict];
+
+            const diff = Math.abs(o.diff_pct);
+            let detailText = '';
+            if (o.verdict === 'overpriced') {
+                detailText = `The asking price of <strong>${formatDKK(o.asking_price)}</strong> is about <strong>${diff}% above</strong> the estimated fair value of <strong>${formatDKK(o.estimated_fair_price)}</strong>.`;
+            } else if (o.verdict === 'underpriced') {
+                detailText = `The asking price of <strong>${formatDKK(o.asking_price)}</strong> is about <strong>${diff}% below</strong> the estimated fair value of <strong>${formatDKK(o.estimated_fair_price)}</strong>. Could be a good deal!`;
+            } else {
+                detailText = `The asking price of <strong>${formatDKK(o.asking_price)}</strong> is within <strong>±10%</strong> of the estimated fair value of <strong>${formatDKK(o.estimated_fair_price)}</strong>.`;
+            }
+            document.getElementById('verdictDetail').innerHTML = detailText;
+
+            document.getElementById('confidenceFill').style.width = o.confidence_pct + '%';
+            document.getElementById('confidenceLabel').textContent = `Analysis confidence: ${o.confidence_pct}% — based on ${data.data_sources.comparable_sales_count} comparable sales + property factors`;
+
+            // Simple check
+            const s = data.simple;
+            document.getElementById('simpleStats').innerHTML =
+                statRow('Asking/m²', formatDKK(o.asking_price_m2)) +
+                statRow('Area avg/m²', formatDKK(s.reference_m2)) +
+                statRow('Difference', diffLabel(s.diff_pct), diffClass(s.diff_pct)) +
+                statRow('Verdict', labels[s.verdict]);
+
+            // Price per m²
+            const m = data.price_per_m2;
+            let m2Html =
+                statRow('Asking/m²', formatDKK(m.asking_price_m2)) +
+                statRow('Area avg/m²', formatDKK(m.area_avg_m2)) +
+                statRow('vs. Area', diffLabel(m.diff_vs_area_pct), diffClass(m.diff_vs_area_pct));
+            if (m.comp_avg_m2) {
+                m2Html += statRow('Comps avg/m²', formatDKK(m.comp_avg_m2));
+                m2Html += statRow('vs. Comps', diffLabel(m.diff_vs_comps_pct), diffClass(m.diff_vs_comps_pct));
+            }
+            m2Html += statRow('Comps found', m.comp_count);
+            document.getElementById('m2Stats').innerHTML = m2Html;
+
+            // Multi-factor
+            const mf = data.multi_factor;
+            document.getElementById('multiStats').innerHTML =
+                statRow('Adjusted fair/m²', formatDKK(mf.adjusted_fair_m2)) +
+                statRow('Fair total price', formatDKK(mf.adjusted_fair_price)) +
+                statRow('Difference', diffLabel(mf.diff_pct), diffClass(mf.diff_pct)) +
+                statRow('Adjustments', mf.adjustments.length + ' applied') +
+                statRow('Verdict', labels[mf.verdict]);
+
+            // Adjustments
+            const adjCard = document.getElementById('adjustmentsCard');
+            if (mf.adjustments.length > 0) {
+                adjCard.style.display = 'block';
+                document.getElementById('adjustmentsList').innerHTML = mf.adjustments.map(a =>
+                    `<div class="adj-item">
+                        <span class="adj-name">${a.factor}</span>
+                        <span class="adj-value">${a.value}</span>
+                        <span class="adj-pct ${a.adjustment_pct >= 0 ? 'positive' : 'negative'}">${a.adjustment_pct > 0 ? '+' : ''}${a.adjustment_pct}%</span>
+                    </div>`
+                ).join('');
+            } else {
+                adjCard.style.display = 'none';
+            }
+
+            // Comparable sales
+            const compsCard = document.getElementById('compsCard');
+            if (data.comparable_sales && data.comparable_sales.length > 0) {
+                compsCard.style.display = 'block';
+                let compsHtml = `<div class="comp-row"><span class="comp-header">Address</span><span class="comp-header">Price</span><span class="comp-header">Size</span><span class="comp-header">Price/m²</span></div>`;
+                compsHtml += data.comparable_sales.map(c =>
+                    `<div class="comp-row">
+                        <span>${c.address || '—'}</span>
+                        <span>${c.price ? formatDKK(c.price) : '—'}</span>
+                        <span>${c.size_m2 ? c.size_m2 + ' m²' : '—'}</span>
+                        <span>${c.price_per_m2 ? formatDKK(c.price_per_m2) : '—'}</span>
+                    </div>`
+                ).join('');
+                document.getElementById('compsList').innerHTML = compsHtml;
+            } else {
+                compsCard.style.display = 'none';
+            }
+
+            // Scrape status
+            const sc = data.scraping || {};
+            let statusHtml = '';
+            if (sc.dingeo) {
+                statusHtml += sc.dingeo.scraped
+                    ? '<span class="scrape-status scrape-ok"><span class="dot"></span>Dingeo data fetched</span>'
+                    : '<span class="scrape-status scrape-fail"><span class="dot"></span>Dingeo: using fallback data</span>';
+            }
+            if (sc.boliga) {
+                const via = sc.boliga.via_apify ? ' via Apify' : '';
+                statusHtml += sc.boliga.comparable_sales_found > 0
+                    ? `<span class="scrape-status scrape-ok"><span class="dot"></span>Boliga: ${sc.boliga.comparable_sales_found} sales found${via}</span>`
+                    : `<span class="scrape-status scrape-fail"><span class="dot"></span>Boliga: using area averages${via ? ' (Apify returned 0)' : ''}</span>`;
+            }
+            if (sc.boligsiden) {
+                statusHtml += sc.boligsiden.scraped
+                    ? '<span class="scrape-status scrape-ok"><span class="dot"></span>Boligsiden stats fetched</span>'
+                    : '<span class="scrape-status scrape-fail"><span class="dot"></span>Boligsiden: using baseline data</span>';
+            }
+            statusHtml += '<br><small>Data sources: <a href="https://dingeo.dk" target="_blank">Dingeo.dk</a> · <a href="https://boliga.dk" target="_blank">Boliga.dk</a> · <a href="https://boligsiden.dk" target="_blank">Boligsiden.dk</a> · Finans Danmark</small>';
+            document.getElementById('scrapeStatus').innerHTML = statusHtml;
+
+            results.classList.add('show');
+            results.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Allow Enter key to submit
+        document.querySelectorAll('input').forEach(el => {
+            el.addEventListener('keydown', e => { if (e.key === 'Enter') checkPrice(); });
+        });
+    </script>
+</body>
+</html>
