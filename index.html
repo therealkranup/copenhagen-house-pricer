@@ -264,24 +264,8 @@
         }
 
         /* ── Loading ──────────────────────────────── */
-        .loading {
-            display: none;
-            text-align: center;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
-            z-index: 9999;
-            padding: 60px 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .loading.show { display: flex; }
+        .loading { display: none; text-align: center; padding: 60px 40px; }
+        .loading.show { display: block; }
         .spinner {
             width: 48px; height: 48px;
             border: 3px solid rgba(74, 95, 143, 0.2);
@@ -292,54 +276,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading p { color: var(--text-dim); font-size: 15px; font-weight: 500; }
-
-        /* Loading text with animated dots */
-        .loading-text {
-            font-size: 18px;
-            font-weight: 600;
-            color: #4a5f8f;
-            margin-bottom: 20px;
-        }
-        .dots {
-            display: inline-block;
-            width: 20px;
-            animation: dotAnimation 1.5s infinite;
-        }
-        @keyframes dotAnimation {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
-
-        /* Timer display */
-        .timer-display {
-            margin: 20px 0;
-            font-size: 48px;
-            font-weight: 900;
-            background: linear-gradient(135deg, #4a5f8f 0%, #3d4f78 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: timerPulse 1s ease-in-out infinite;
-        }
-        @keyframes timerPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-        .timer {
-            font-family: 'Courier New', monospace;
-        }
-
-        /* Fun fact */
-        .fun-fact {
-            font-size: 14px;
-            color: var(--text-dim);
-            font-style: italic;
-            margin-top: 20px;
-            animation: fadeInUp 0.8s ease-out;
-            min-height: 40px;
-        }
 
         /* ── Results ──────────────────────────────── */
         #results { display: none; }
@@ -766,11 +702,7 @@
         <!-- ── Loading ─────────────────────────────── -->
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p class="loading-text">Scraping Dingeo <span class="dots"></span></p>
-            <div class="timer-display">
-                <span class="timer">0:00</span>
-            </div>
-            <p class="fun-fact" id="funFact">🏰 Did you know? Copenhagen has over 400 years of history!</p>
+            <p>Scraping Dingeo &amp; Boliga for data…</p>
         </div>
 
         <!-- ── Results ─────────────────────────────── -->
@@ -857,47 +789,6 @@
             return `<div class="stat-row"><span class="stat-label">${label}</span><span class="stat-value ${cls || ''}">${value}</span></div>`;
         }
 
-        // Fun facts about Copenhagen
-        const copenhagenFacts = [
-            '🏰 Did you know? Copenhagen has over 400 years of history!',
-            '🚴 Denmark has more bicycles than people!',
-            '🍺 Carlsberg brewery was founded in Copenhagen in 1847',
-            '⚓ Nyhavn is one of the most picturesque harbors in Europe',
-            '👑 The Danish monarchy is the oldest in Europe',
-            '🎭 Tivoli Gardens is one of the world\'s oldest amusement parks',
-            '🧜 Copenhagen is ranked as one of the world\'s happiest cities',
-            '🏛️ The Little Mermaid statue is a symbol of Copenhagen',
-            '🌉 Strøget is one of Europe\'s longest pedestrian streets',
-            '🎨 Copenhagen is known as the "City of Design"'
-        ];
-
-        let timerInterval;
-        let elapsedSeconds = 0;
-
-        function startTimer() {
-            elapsedSeconds = 0;
-            if (timerInterval) clearInterval(timerInterval);
-
-            timerInterval = setInterval(() => {
-                elapsedSeconds++;
-                const minutes = Math.floor(elapsedSeconds / 60);
-                const seconds = elapsedSeconds % 60;
-                const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                document.querySelector('.timer').textContent = display;
-            }, 1000);
-
-            // Rotate fun facts every 5 seconds
-            let factIndex = 0;
-            const factInterval = setInterval(() => {
-                if (!document.getElementById('loading').classList.contains('show')) {
-                    clearInterval(factInterval);
-                    return;
-                }
-                factIndex = (factIndex + 1) % copenhagenFacts.length;
-                document.getElementById('funFact').textContent = copenhagenFacts[factIndex];
-            }, 5000);
-        }
-
         async function checkPrice() {
             const btn = document.getElementById('evaluateBtn');
             const loading = document.getElementById('loading');
@@ -915,7 +806,6 @@
             btn.disabled = true;
             loading.classList.add('show');
             results.classList.remove('show');
-            startTimer();
 
             const payload = {
                 address: document.getElementById('address').value.trim(),
@@ -936,18 +826,19 @@
                     body: JSON.stringify(payload),
                 });
                 const data = await resp.json();
+                console.log('API Response:', data);
                 if (data.error) {
                     alert('Error: ' + data.error);
                     return;
                 }
                 renderResults(data);
+                results.classList.add('show');
             } catch (e) {
                 alert('Failed to connect to backend. Make sure the Flask server is running on port 5000.');
                 console.error(e);
             } finally {
                 btn.disabled = false;
                 loading.classList.remove('show');
-                if (timerInterval) clearInterval(timerInterval);
             }
         }
 
